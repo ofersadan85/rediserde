@@ -14,6 +14,7 @@ A [Serde](https://serde.rs/) implementation for the [RESP](https://redis.io/docs
 - Supports complex structs, enums, maps, arrays, options, and more
 - Simple API: `to_string`, `to_bytes`, `from_str`, `from_bytes`
 - **Full support of serde's derive macros**
+- **Supports all RESP2 and RESP3 data types**
 
 ## Installation
 

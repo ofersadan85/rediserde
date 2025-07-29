@@ -214,7 +214,7 @@ impl serde::Serializer for &mut Serializer {
     /// Serializes a sequence as an array.
     /// An empty sequence is serialized as *0\r\n
     /// A null sequence is serialized as *-1\r\n, and will be output for a sequence of unknown length.
-    /// A non-empty sequence is serialized as *<length>\r\n<data>
+    /// A non-empty sequence is serialized as `*<length>\r\n<data>`
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         self.output.push(RespDataKind::Array.to_prefix_bytes());
         match len {
