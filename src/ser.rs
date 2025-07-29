@@ -83,9 +83,7 @@ impl serde::Serializer for &mut Serializer {
     }
 
     fn serialize_i64(self, v: i64) -> Result<Self::Ok> {
-        // :[<+|->]<value>\r\n
         self.output.push(RespDataKind::Integer.to_prefix_bytes());
-        // self.output.push(if v >= 0 { b'+' } else { b'-' }); // TODO: Need to test if this is needed
         self.output.extend_from_slice(v.to_string().as_bytes());
         self.output.extend_from_slice(CRLF);
         Ok(())
@@ -108,23 +106,22 @@ impl serde::Serializer for &mut Serializer {
 
     /// RESP Integer is at most i64, so a u64 will be serialized as a `BigNumber`.
     fn serialize_u64(self, v: u64) -> Result<Self::Ok> {
-        // ([+|-]<number>\r\n
         self.output.push(RespDataKind::BigNumber.to_prefix_bytes());
-        // self.output.push(b'+'); // TODO: Need to test if this is needed
         self.output.extend_from_slice(v.to_string().as_bytes());
         self.output.extend_from_slice(CRLF);
         Ok(())
     }
 
-    /// Uses `self.serialize_f64` internally.
     fn serialize_f32(self, v: f32) -> Result<Self::Ok> {
-        self.serialize_f64(v.into())
+        // Does *not* use `self.serialize_f64` internally to avoid precision loss.
+        self.output.push(RespDataKind::Float.to_prefix_bytes());
+        self.output.extend_from_slice(v.to_string().as_bytes());
+        self.output.extend_from_slice(CRLF);
+        Ok(())
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok> {
-        // ,[<+|->]<integral>[.<fractional>][<E|e>[sign]<exponent>]\r\n
         self.output.push(RespDataKind::Float.to_prefix_bytes());
-        // self.output.push(if v >= 0.0 { b'+' } else { b'-' }); // TODO: Need to test if this is needed
         self.output.extend_from_slice(v.to_string().as_bytes());
         self.output.extend_from_slice(CRLF);
         Ok(())
@@ -468,20 +465,12 @@ mod tests {
     #[test]
     // #[ignore]
     fn test_float() {
-        // FIXME: Floats lose precision by the time they get passed to serialize_f32
-        // For example, val = 3.1_f32 breaks this test
-        // Also: 2e20 is always formatted as a big number instead of 2e20
-        let val= 3.0_f32;
-        let expected1 = format!(",{val}\r\n");
-        let neg = val * -1.0;
-        let expected2 = format!(",{neg}\r\n");
-        dbg!(&expected1);
-        dbg!(&expected2);
-        assert_eq!(to_string(&val).unwrap(), expected1, "plus f32");
-        assert_eq!(to_string(&(val as f64)).unwrap(), expected1, "plus f64");
-        assert_eq!(to_string(&neg).unwrap(), expected2, "minus f32");
-        assert_eq!(to_string(&(neg as f64)).unwrap(), expected2, "minus f64");
+        assert_eq!(to_string(&3.1_f32).unwrap(), ",3.1\r\n", "plus f32");
+        assert_eq!(to_string(&3.1_f64).unwrap(), ",3.1\r\n", "plus f64");
+        assert_eq!(to_string(&-3.1_f32).unwrap(), ",-3.1\r\n", "plus f32");
+        assert_eq!(to_string(&-3.1_f64).unwrap(), ",-3.1\r\n", "plus f64");
         assert_eq!(to_string(&2e20_f64).unwrap(), ",200000000000000000000\r\n", "exp f64");
+        assert_eq!(to_string(&2e-20_f64).unwrap(), ",0.00000000000000000002\r\n", "neg exp f64");
     }
 
     #[test]
