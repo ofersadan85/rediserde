@@ -400,7 +400,15 @@ impl<'de> serde::de::Deserializer<'de> for &mut Deserializer<'de> {
     where
         V: serde::de::Visitor<'de>,
     {
-        self.expect_byte(RespDataKind::Array.to_prefix_bytes())?;
+        let first = self.input.first().ok_or(Error::UnexpectedEnd)?;
+        let kind = RespDataKind::try_from(*first).map_err(|()| Error::UnrecognizedStart)?;
+        if !matches!(kind, RespDataKind::Array | RespDataKind::Set | RespDataKind::Push) {
+            return Err(Error::UnexpectedByte {
+                expected: "An array, set, or push prefix".to_string(),
+                found: char::from(*first),
+            });
+        }
+        self.expect_byte(*first)?;
         let length = self.expect_length()?;
         self.expect_crlf()?;
         // We need to create a new visitor that can handle the sequence
@@ -441,7 +449,15 @@ impl<'de> serde::de::Deserializer<'de> for &mut Deserializer<'de> {
     where
         V: serde::de::Visitor<'de>,
     {
-        self.expect_byte(RespDataKind::Map.to_prefix_bytes())?;
+        let first = self.input.first().ok_or(Error::UnexpectedEnd)?;
+        let kind = RespDataKind::try_from(*first).map_err(|()| Error::UnrecognizedStart)?;
+        if !matches!(kind, RespDataKind::Map | RespDataKind::Attributes) {
+            return Err(Error::UnexpectedByte {
+                expected: "A map or attributes prefix".to_string(),
+                found: char::from(*first),
+            });
+        }
+        self.expect_byte(*first)?;
         let length = self.expect_length()?;
         self.expect_crlf()?;
 
@@ -614,13 +630,15 @@ impl<'de> serde::de::EnumAccess<'de> for EnumDeserializer<'_, 'de> {
     where
         V: serde::de::DeserializeSeed<'de>,
     {
-        let first = self.de.next_byte()?;
-        if first != RespDataKind::Map.to_prefix_bytes() {
+        let first = self.de.input.first().ok_or(Error::UnexpectedEnd)?;
+        let kind = RespDataKind::try_from(*first).map_err(|()| Error::UnrecognizedStart)?;
+        if !matches!(kind, RespDataKind::Map | RespDataKind::Attributes) {
             return Err(Error::UnexpectedByte {
-                expected: "Map prefix (%)".to_string(),
-                found: char::from(first),
+                expected: "A map or attributes prefix".to_string(),
+                found: char::from(*first),
             });
         }
+        self.de.expect_byte(*first)?;
         let length = self.de.expect_length()?;
         if length != 1 {
             return Err(Error::DeserializeError(
