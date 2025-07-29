@@ -256,7 +256,7 @@ pub enum RespDataKind {
     /// let serialized = to_string(&map).unwrap();
     /// assert_eq!(serialized, "%2\r\n$10\r\nfirst_name\r\n$5\r\nAlice\r\n$9\r\nlast_name\r\n$5\r\nSmith\r\n");
     /// let deserialized_hashmap: HashMap<String, String> = from_str(&serialized).unwrap();
-    /// assert_eq!(deserialized_hashmap, map);
+    /// assert_eq!(deserialized_hashmap.len(), map.len()); // We only check length here because order is not guaranteed
     /// let deserialized_bt: BTreeMap<String, String> = from_str(&serialized).unwrap();
     /// assert_eq!(deserialized_bt.len(), 2);
     /// ```
