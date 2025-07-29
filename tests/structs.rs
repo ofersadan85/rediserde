@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_resp::*;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 enum Gender {
@@ -31,7 +30,7 @@ struct Person {
 }
 
 #[test]
-fn complex_structs() {
+fn complex() {
     let alice = Person {
         name: "Alice".to_string(),
         age: 30,
@@ -60,7 +59,27 @@ fn complex_structs() {
         weight: Some(80.0),
     };
     let people = vec![alice, bob, charlie];
-    let s = to_string(&people).unwrap();
-    let deserialized_people: Vec<Person> = from_str(&s).unwrap();
+    let s = rediserde::to_string(&people).unwrap();
+    let deserialized_people: Vec<Person> = rediserde::from_str(&s).unwrap();
     assert_eq!(deserialized_people, people);
+}
+
+#[test]
+fn simple() {
+    use rediserde::{from_str, to_string};
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    struct Person {
+        name: String,
+        age: u32,
+    }
+
+    let person = Person {
+        name: "Alice".to_string(),
+        age: 30,
+    };
+    let serialized = to_string(&person).unwrap();
+    let deserialized: Person = from_str(&serialized).unwrap();
+    assert_eq!(deserialized, person);
 }

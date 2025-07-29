@@ -1,5 +1,19 @@
 [package]
-name = "serde_resp"
+name = "rediserde"
+description = "RESP (Redis Serialization Protocol) for Serde"
+authors = ["Ofer Sadan <ofersadan85@gmail.com>"]
+repository = "https://github.com/ofersadan85/rediserde"
+readme = "README.md"
+categories = [
+    "data-structures",
+    "encoding",
+    "parser-implementations",
+    "parsing",
+]
+documentation = "https://docs.rs/rediserde"
+keywords = ["resp", "redis", "serde", "serialization"]
+license-file = "LICENSE"
+
 version = "0.1.0"
 edition = "2024"
 
