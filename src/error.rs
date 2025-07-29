@@ -10,6 +10,7 @@ pub enum Error {
     InvalidUtf8,
     ExpectedLength,
 }
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 impl std::error::Error for Error {}
@@ -29,7 +30,7 @@ impl std::fmt::Display for Error {
             }
             Error::UnrecognizedStart => write!(f, "Unrecognized start of RESP data"),
             Error::InvalidUtf8 => write!(f, "Invalid UTF-8 sequence in RESP data"),
-            Error::ExpectedLength => write!(f, "Expected a length for following items")
+            Error::ExpectedLength => write!(f, "Expected a length for following items"),
         }
     }
 }

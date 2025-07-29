@@ -1,6 +1,6 @@
 #![allow(clippy::missing_errors_doc)]
 
-use crate::{CRLF, Result, resp::RespDataKind};
+use crate::{CRLF, Error, Result, resp::RespDataKind};
 
 #[derive(Debug, Default)]
 pub struct Serializer {
@@ -50,7 +50,7 @@ where
 
 impl serde::Serializer for &mut Serializer {
     type Ok = ();
-    type Error = crate::Error;
+    type Error = Error;
     type SerializeSeq = Self;
     type SerializeTuple = Self;
     type SerializeTupleStruct = Self;
@@ -143,7 +143,8 @@ impl serde::Serializer for &mut Serializer {
     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok> {
         // $<length>\r\n<data>\r\n
         self.output.push(RespDataKind::BulkString.to_prefix_bytes());
-        self.output.extend_from_slice(v.len().to_string().as_bytes());
+        self.output
+            .extend_from_slice(v.len().to_string().as_bytes());
         self.output.extend_from_slice(CRLF);
         self.output.extend_from_slice(v);
         self.output.extend_from_slice(CRLF);
@@ -192,17 +193,21 @@ impl serde::Serializer for &mut Serializer {
         value.serialize(self)
     }
 
-    /// Ignores the newtype wrapper, serializes the data directly
+    /// Serializes a newtype struct as a map with a single key-value pair.
     fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
         value: &T,
     ) -> Result<Self::Ok>
     where
         T: ?Sized + serde::Serialize,
     {
+        self.output.push(RespDataKind::Map.to_prefix_bytes());
+        self.output.push(b'1'); // Single key-value pair
+        self.output.extend_from_slice(CRLF);
+        self.serialize_str(variant)?;
         value.serialize(self)
     }
 
@@ -240,23 +245,25 @@ impl serde::Serializer for &mut Serializer {
         self.serialize_seq(Some(len))
     }
 
-    /// Serializes a tuple variant as a sequence.
-    /// Ignores the wrapper
-    /// Uses `self.serialize_seq` internally.
+    /// Serializes a tuple variant as map from variant to a sequence.
     fn serialize_tuple_variant(
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
+        self.output.push(RespDataKind::Map.to_prefix_bytes());
+        self.output.extend_from_slice(b"1"); // Single key-value pair
+        self.output.extend_from_slice(CRLF);
+        self.serialize_str(variant)?;
         self.serialize_seq(Some(len))
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
         // %<number-of-entries>\r\n<key-1><value-1>...<key-n><value-n>
         let len = len.ok_or_else(|| {
-            crate::Error::SerializeError("Cannot serialize a map with unknown length".to_string())
+            Error::SerializeError("Cannot serialize a map with unknown length".to_string())
         })?;
         self.output.push(RespDataKind::Map.to_prefix_bytes());
         self.output.extend_from_slice(len.to_string().as_bytes());
@@ -270,22 +277,26 @@ impl serde::Serializer for &mut Serializer {
         self.serialize_map(Some(len))
     }
 
-    /// Serializes as a struct, ignores the wrapper
+    /// Serializes as a map from the variant to a struct
     /// Uses `self.serialize_struct` internally
     fn serialize_struct_variant(
         self,
         name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStructVariant> {
+        self.output.push(RespDataKind::Map.to_prefix_bytes());
+        self.output.extend_from_slice(b"1"); // Single key-value pair
+        self.output.extend_from_slice(CRLF);
+        self.serialize_str(variant)?;
         self.serialize_struct(name, len)
     }
 }
 
 impl serde::ser::SerializeSeq for &mut Serializer {
     type Ok = ();
-    type Error = crate::Error;
+    type Error = Error;
 
     /// There's no separation between values in a RESP array
     /// So each value can serialize itself
@@ -304,7 +315,7 @@ impl serde::ser::SerializeSeq for &mut Serializer {
 
 impl serde::ser::SerializeTuple for &mut Serializer {
     type Ok = ();
-    type Error = crate::Error;
+    type Error = Error;
 
     /// Identical to `SerializeSeq` implementation
     fn serialize_element<T>(&mut self, value: &T) -> Result<()>
@@ -322,7 +333,7 @@ impl serde::ser::SerializeTuple for &mut Serializer {
 
 impl serde::ser::SerializeTupleStruct for &mut Serializer {
     type Ok = ();
-    type Error = crate::Error;
+    type Error = Error;
 
     /// Identical to `SerializeSeq` implementation
     fn serialize_field<T>(&mut self, value: &T) -> Result<()>
@@ -340,7 +351,7 @@ impl serde::ser::SerializeTupleStruct for &mut Serializer {
 
 impl serde::ser::SerializeTupleVariant for &mut Serializer {
     type Ok = ();
-    type Error = crate::Error;
+    type Error = Error;
 
     /// Identical to `SerializeSeq` implementation
     fn serialize_field<T>(&mut self, value: &T) -> Result<()>
@@ -358,7 +369,7 @@ impl serde::ser::SerializeTupleVariant for &mut Serializer {
 
 impl serde::ser::SerializeMap for &mut Serializer {
     type Ok = ();
-    type Error = crate::Error;
+    type Error = Error;
 
     /// Keys and values serialize themselves
     fn serialize_key<T>(&mut self, key: &T) -> Result<()>
@@ -384,7 +395,7 @@ impl serde::ser::SerializeMap for &mut Serializer {
 
 impl serde::ser::SerializeStruct for &mut Serializer {
     type Ok = ();
-    type Error = crate::Error;
+    type Error = Error;
 
     /// Uses `SerializeMap` implementation internally
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
@@ -404,7 +415,7 @@ impl serde::ser::SerializeStruct for &mut Serializer {
 
 impl serde::ser::SerializeStructVariant for &mut Serializer {
     type Ok = ();
-    type Error = crate::Error;
+    type Error = Error;
 
     // Uses `SerializeMap` implementation internally
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
@@ -463,14 +474,21 @@ mod tests {
     }
 
     #[test]
-    // #[ignore]
     fn test_float() {
         assert_eq!(to_string(&3.1_f32).unwrap(), ",3.1\r\n", "plus f32");
         assert_eq!(to_string(&3.1_f64).unwrap(), ",3.1\r\n", "plus f64");
         assert_eq!(to_string(&-3.1_f32).unwrap(), ",-3.1\r\n", "plus f32");
         assert_eq!(to_string(&-3.1_f64).unwrap(), ",-3.1\r\n", "plus f64");
-        assert_eq!(to_string(&2e20_f64).unwrap(), ",200000000000000000000\r\n", "exp f64");
-        assert_eq!(to_string(&2e-20_f64).unwrap(), ",0.00000000000000000002\r\n", "neg exp f64");
+        assert_eq!(
+            to_string(&2e20_f64).unwrap(),
+            ",200000000000000000000\r\n",
+            "exp f64"
+        );
+        assert_eq!(
+            to_string(&2e-20_f64).unwrap(),
+            ",0.00000000000000000002\r\n",
+            "neg exp f64"
+        );
     }
 
     #[test]
@@ -570,14 +588,14 @@ mod tests {
 
         let e = E::Newtype(1);
         let out = to_string(&e).unwrap();
-        assert_eq!(out, ":1\r\n");
+        assert_eq!(out, "%1\r\n$7\r\nNewtype\r\n:1\r\n");
 
         let e = E::Tuple(1, 2);
         let out = to_string(&e).unwrap();
-        assert_eq!(out, "*2\r\n:1\r\n:2\r\n");
+        assert_eq!(out, "%1\r\n$5\r\nTuple\r\n*2\r\n:1\r\n:2\r\n");
 
         let e = E::Struct { a: 1 };
         let out = to_string(&e).unwrap();
-        assert_eq!(out, "%1\r\n$1\r\na\r\n:1\r\n")
+        assert_eq!(out, "%1\r\n$6\r\nStruct\r\n%1\r\n$1\r\na\r\n:1\r\n")
     }
 }
