@@ -1,10 +1,17 @@
 name: Rust
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - "README.md"
+      - ".vscode/**"
   pull_request:
     branches: [ "main" ]
+    paths-ignore: 
+      - "README.md"
+      - ".vscode/**"
 
 env:
   CARGO_TERM_COLOR: always
