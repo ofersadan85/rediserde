@@ -1,9 +1,9 @@
 # rediserde (Redis Serde)
 
 [![Rust](https://github.com/ofersadan85/rediserde/actions/workflows/rust.yml/badge.svg)](https://github.com/ofersadan85/rediserde/actions/workflows/rust.yml)
-![Crates.io Version](https://img.shields.io/crates/v/rediserde)
-![docs.rs](https://img.shields.io/docsrs/rediserde)
-![GitHub License](https://img.shields.io/github/license/ofersadan85/rediserde)
+[![Crates.io Version](https://img.shields.io/crates/v/rediserde)](https://crates.io/crates/rediserde)
+[![docs.rs](https://img.shields.io/docsrs/rediserde)](https://docs.rs/rediserde)
+[![GitHub License](https://img.shields.io/github/license/ofersadan85/rediserde)](https://github.com/ofersadan85/rediserde/blob/main/LICENSE)
 
 A [Serde](https://serde.rs/) implementation for the [RESP](https://redis.io/docs/latest/develop/reference/protocol-spec/) (Redis Serialization Protocol) format, supporting both serialization and deserialization of Rust data structures.
 
