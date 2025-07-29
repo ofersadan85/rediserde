@@ -78,13 +78,13 @@ However, to match with Rust's (and serde's) types the mapping is roughly as foll
 |-----------------|-------------------------|
 | Simple String   | `String`                |
 | Error           | `String`                |
-| Integer         | `u8`-`u64`, `i8`-`i64`  |
+| Integer         | `u8`-`u32`, `i8`-`i64`  |
 | Bulk String     | `String`                |
 | Array           | `Vec<T>`                |
 | Null            | `Option<T>` (`None`)    |
 | Boolean         | `bool`                  |
 | Double          | `f64`                   |
-| Big Number      | `i64`                   |
+| Big Number      | `u64` & `usize`         |
 | Verbatim String | `String`                |
 | Map             | `HashMap<String, T>`    |
 | Attribute       | `HashMap<String, T>`    |
@@ -109,7 +109,7 @@ However, since the mapping is not one-to-one, there are some important notes:
 ## Notable Alternatives
 
 - [serde-RESP](https://crates.io/crates/serde-resp): A similar crate that also implements RESP serialization and deserialization with serde, but with a different API and design choices. Unlike this crate, it does not directly support serde's derive macros on enums and structs, but has some handy macros for direct data manipulation. Appears to be unmaintained since February 2021. [GitHub](https://github.com/dedztbh/serde-RESP).
-- [resp](https://crates.io/crates/resp): A crate RESP types but does not integrate with serde. It provides a low-level API for working with RESP data, but does not support serialization or deserialization of Rust types. Appears to be unmaintained since August 2022. [GitHub](https://github.com/iorust/resp).
+- [resp](https://crates.io/crates/resp): A crate for RESP types. Does not integrate with serde. It provides a low-level API for working with RESP data, but does not support serialization or deserialization of Rust types. Appears to be unmaintained since August 2022. [GitHub](https://github.com/iorust/resp).
 - [stream_resp](https://crates.io/crates/stream_resp): A crate that provides a streaming API for RESP data, but does not support serde serialization or deserialization. Appears to be actively maintained. [GitHub](https://github.com/daydaydrunk/stream_resp).
 
 To try and minimize dependencies and maximize flexibility in further development, this crate does not depend on any of the above crates, but rather implements RESP serialization and deserialization directly.
