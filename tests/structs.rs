@@ -81,5 +81,7 @@ fn simple() {
     };
     let serialized = to_string(&person).unwrap();
     let deserialized: Person = from_str(&serialized).unwrap();
+    let deserialized_raw: Person = from_str("%2\r\n+name\r\n+Alice\r\n+age\r\n:30\r\n").unwrap();
     assert_eq!(deserialized, person);
+    assert_eq!(deserialized_raw, person);
 }

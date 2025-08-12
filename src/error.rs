@@ -1,4 +1,4 @@
-use std::string::FromUtf8Error;
+use std::{str::Utf8Error, string::FromUtf8Error};
 
 #[derive(Debug, Clone)]
 pub enum Error {
@@ -55,6 +55,12 @@ impl serde::de::Error for Error {
 
 impl From<FromUtf8Error> for Error {
     fn from(_err: FromUtf8Error) -> Self {
+        Self::InvalidUtf8
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(_err: Utf8Error) -> Self {
         Self::InvalidUtf8
     }
 }

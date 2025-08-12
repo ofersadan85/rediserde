@@ -27,6 +27,9 @@
 //!
 //! let serialized = to_string(&person).unwrap();
 //! let deserialized: Person = from_str(&serialized).unwrap();
+//! let deserialized_raw: Person = from_str("%2\r\n+name\r\n+Alice\r\n+age\r\n:30\r\n").unwrap();
+//! assert_eq!(deserialized, person);
+//! assert_eq!(deserialized_raw, person);
 //! assert_eq!(deserialized, person);
 //! ```
 //!
@@ -50,7 +53,7 @@ mod ser;
 pub use de::{Deserializer, from_bytes, from_str};
 pub use error::{Error, Result};
 pub use resp::RespDataKind;
-pub use ser::{Serializer, to_bytes, to_string, to_utf8_lossy};
+pub use ser::{Serializer, to_bytes, to_string};
 
 pub const CRLF: &[u8] = b"\r\n";
 pub const CRLF_STR: &str = "\r\n";

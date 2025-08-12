@@ -30,15 +30,6 @@ where
     Ok(serializer.output)
 }
 
-pub fn to_utf8_lossy<T>(value: &T) -> Result<String>
-where
-    T: serde::Serialize,
-{
-    let mut serializer = Serializer::new();
-    value.serialize(&mut serializer)?;
-    Ok(String::from_utf8_lossy(&serializer.output).into_owned())
-}
-
 pub fn to_string<T>(value: &T) -> Result<String>
 where
     T: serde::Serialize,

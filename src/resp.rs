@@ -238,9 +238,12 @@ pub enum RespDataKind {
     ///     name: "Alice".to_string(),
     ///     age: 30,
     /// };
+    ///
     /// let serialized = to_string(&person).unwrap();
     /// let deserialized: Person = from_str(&serialized).unwrap();
+    /// let deserialized_raw: Person = from_str("%2\r\n+name\r\n+Alice\r\n+age\r\n:30\r\n").unwrap();
     /// assert_eq!(deserialized, person);
+    /// assert_eq!(deserialized_raw, person);
     /// ```
     ///
     /// And an arbitrary map example:
@@ -255,8 +258,8 @@ pub enum RespDataKind {
     ///
     /// let serialized = to_string(&map).unwrap();
     /// assert_eq!(serialized, "%2\r\n$10\r\nfirst_name\r\n$5\r\nAlice\r\n$9\r\nlast_name\r\n$5\r\nSmith\r\n");
-    /// let deserialized_hashmap: HashMap<String, String> = from_str(&serialized).unwrap();
-    /// assert_eq!(deserialized_hashmap.len(), map.len()); // We only check length here because order is not guaranteed
+    /// // Note that the order of keys is not guaranteed in HashMap, so we use BTreeMap for testing
+    /// // But in principle serialization / deserialization should work with HashMap as well
     /// let deserialized_bt: BTreeMap<String, String> = from_str(&serialized).unwrap();
     /// assert_eq!(deserialized_bt.len(), 2);
     /// ```

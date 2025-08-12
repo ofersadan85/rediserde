@@ -66,7 +66,7 @@ impl<'de> Deserializer<'de> {
             .iter()
             .position(|&b| !b.is_ascii_digit())
             .ok_or(Error::ExpectedLength)?;
-        let length_str = String::from_utf8(self.input[..first_non_numeric].to_vec())
+        let length_str = str::from_utf8(&self.input[..first_non_numeric])
             .map_err(|_| Error::ExpectedLength)?;
         self.input = &self.input[first_non_numeric..];
         let length = length_str
@@ -75,7 +75,7 @@ impl<'de> Deserializer<'de> {
         Ok(length)
     }
 
-    fn parse_string(&mut self) -> Result<String> {
+    fn parse_string(&mut self) -> Result<&str> {
         let first = self.next_byte()?;
         let kind = RespDataKind::try_from(first).map_err(|()| Error::UnrecognizedStart)?;
         let result = match kind {
@@ -95,7 +95,7 @@ impl<'de> Deserializer<'de> {
         Ok(result)
     }
 
-    fn parse_simple_string(&mut self) -> Result<String> {
+    fn parse_simple_string(&mut self) -> Result<&str> {
         let crlf_index = self.input.windows(2).position(|w| w == CRLF);
         let result = if let Some(index) = crlf_index {
             let result = &self.input[..index];
@@ -108,20 +108,20 @@ impl<'de> Deserializer<'de> {
             return Err(Error::UnexpectedEnd);
         }
         self.expect_crlf()?;
-        Ok(String::from_utf8(result.to_vec())?)
+        Ok(str::from_utf8(result)?)
     }
 
-    fn parse_bulk_string(&mut self) -> Result<String> {
+    fn parse_bulk_string(&mut self) -> Result<&str> {
         if self.input.starts_with(b"-1\r\n") {
             self.input = &self.input[4..]; // Skip -1\r\n
-            return Ok(String::new()); // Null string
+            return Ok(""); // Null string
         }
         let length = self.expect_length()?;
         self.expect_crlf()?;
         let data = &self.input[..length];
         self.input = &self.input[length..];
         self.expect_crlf()?;
-        Ok(String::from_utf8(data.to_vec())?)
+        Ok(str::from_utf8(data)?)
     }
 
     /// Parse an number from the RESP format.
@@ -148,7 +148,7 @@ impl<'de> Deserializer<'de> {
             .iter()
             .position(|b| !VALID_NUMERIC_CHARS.contains(b))
             .ok_or(Error::UnexpectedEnd)?;
-        let value_str = String::from_utf8(self.input[..non_numeric_index].to_vec())?;
+        let value_str = str::from_utf8(&self.input[..non_numeric_index])?;
         self.input = &self.input[non_numeric_index..];
         let value = value_str.parse::<N>().map_err(|_| Error::UnexpectedByte {
             expected: "A valid integer string".to_string(),
@@ -314,7 +314,8 @@ impl<'de> serde::de::Deserializer<'de> for &mut Deserializer<'de> {
     where
         V: serde::de::Visitor<'de>,
     {
-        self.deserialize_string(visitor)
+        let s = self.parse_string()?;
+        visitor.visit_str(s)
     }
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
@@ -322,7 +323,7 @@ impl<'de> serde::de::Deserializer<'de> for &mut Deserializer<'de> {
         V: serde::de::Visitor<'de>,
     {
         let s = self.parse_string()?;
-        visitor.visit_string(s)
+        visitor.visit_string(s.to_string())
     }
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
@@ -346,9 +347,7 @@ impl<'de> serde::de::Deserializer<'de> for &mut Deserializer<'de> {
     ///
     /// As commented in `Serializer` implementation, this is a lossy
     /// representation. For example the values `Some(())` and `None` both
-    /// serialize as just `null`. Unfortunately this is typically what people
-    /// expect when working with JSON. Other formats are encouraged to behave
-    /// more intelligently if possible.
+    /// serialize as just `null`.
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
     where
         V: serde::de::Visitor<'de>,
@@ -416,7 +415,7 @@ impl<'de> serde::de::Deserializer<'de> for &mut Deserializer<'de> {
         visitor.visit_seq(seq_visitor)
     }
 
-    // Tuples look just like sequences in JSON. Some formats may be able to
+    // Tuples look just like sequences. Some formats may be able to
     // represent tuples more efficiently.
     //
     // As indicated by the length parameter, the `Deserialize` implementation
@@ -429,7 +428,7 @@ impl<'de> serde::de::Deserializer<'de> for &mut Deserializer<'de> {
         self.deserialize_seq(visitor)
     }
 
-    // Tuple structs look just like sequences in JSON.
+    // Tuple structs look just like sequences.
     fn deserialize_tuple_struct<V>(
         self,
         _name: &'static str,
@@ -502,7 +501,7 @@ impl<'de> serde::de::Deserializer<'de> for &mut Deserializer<'de> {
             | RespDataKind::VerbatimString => {
                 // Visit a unit variant.
                 let s = self.parse_string()?;
-                visitor.visit_enum(s.as_str().into_deserializer())
+                visitor.visit_enum(s.into_deserializer())
             }
             RespDataKind::Map | RespDataKind::Attributes => {
                 visitor.visit_enum(EnumDeserializer::new(self))
@@ -515,9 +514,8 @@ impl<'de> serde::de::Deserializer<'de> for &mut Deserializer<'de> {
     }
 
     // An identifier in Serde is the type that identifies a field of a struct or
-    // the variant of an enum. In JSON, struct fields and enum variants are
-    // represented as strings. In other formats they may be represented as
-    // numeric indices.
+    // the variant of an enum. Struct fields and enum variants are
+    // represented as strings.
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
     where
         V: serde::de::Visitor<'de>,
@@ -664,7 +662,7 @@ impl<'de> serde::de::VariantAccess<'de> for EnumDeserializer<'_, 'de> {
         ))
     }
 
-    // Newtype variants are represented in JSON as `{ NAME: VALUE }` so
+    // Newtype variants are represented as `{ NAME: VALUE }` so
     // deserialize the value here.
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
     where
@@ -673,7 +671,7 @@ impl<'de> serde::de::VariantAccess<'de> for EnumDeserializer<'_, 'de> {
         seed.deserialize(self.de)
     }
 
-    // Tuple variants are represented in JSON as `{ NAME: [DATA...] }` so
+    // Tuple variants are represented as `{ NAME: [DATA...] }` so
     // deserialize the sequence of data here.
     fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
     where
@@ -682,7 +680,7 @@ impl<'de> serde::de::VariantAccess<'de> for EnumDeserializer<'_, 'de> {
         serde::de::Deserializer::deserialize_seq(self.de, visitor)
     }
 
-    // Struct variants are represented in JSON as `{ NAME: { K: V, ... } }` so
+    // Struct variants are represented as `{ NAME: { K: V, ... } }` so
     // deserialize the inner map here.
     fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
     where
