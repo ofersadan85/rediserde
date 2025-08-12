@@ -39,25 +39,25 @@ serde = { version = "1.0", features = ["derive"] }
 Use this crate like any other serde-compatible crate (like `serde_json` or `serde_yaml`):
 
 ```rust
-    use rediserde::{from_str, to_string};
-    use serde::{Deserialize, Serialize};
-    
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
-    struct Person {
-        name: String,
-        age: u32,
-    }
-    
-    let person = Person {
-        name: "Alice".to_string(),
-        age: 30,
-    };
+use rediserde::{from_str, to_string};
+use serde::{Deserialize, Serialize};
 
-    let serialized = to_string(&person).unwrap();
-    let deserialized: Person = from_str(&serialized).unwrap();
-    let deserialized_raw: Person = from_str("%2\r\n+name\r\n+Alice\r\n+age\r\n:30\r\n").unwrap();
-    assert_eq!(deserialized, person);
-    assert_eq!(deserialized_raw, person);
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+struct Person {
+    name: String,
+    age: u32,
+}
+
+let person = Person {
+    name: "Alice".to_string(),
+    age: 30,
+
+let serialized = to_string(&person).unwrap();
+let deserialized: Person = from_str(&serialized).unwrap();
+let deserialized_raw: Person = from_str("%2\r\n+name\r\n+Alice\r\n+age\r\n:30\r\n").unwrap();
+
+assert_eq!(deserialized, person);
+assert_eq!(deserialized_raw, person);
 ```
 
 For a more complex example, see the [tests/structs.rs](tests/structs.rs) file.
